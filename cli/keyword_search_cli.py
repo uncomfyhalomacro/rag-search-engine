@@ -6,7 +6,6 @@ import json
 from lib.inverted_index import InvertedIndex
 
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -16,14 +15,28 @@ def main() -> None:
     subparsers.add_parser("build", help="Build search index")
     idf_parser = subparsers.add_parser("idf", help="Calculate IDF for a given term")
     idf_parser.add_argument("term", help="The term to calculate IDF")
-    tf_parser = subparsers.add_parser("tf", help="Find term frequencies from a term and a doc id")
+    tf_parser = subparsers.add_parser(
+        "tf", help="Find term frequencies from a term and a doc id"
+    )
     tf_params = tf_parser.add_argument_group("params")
-    tf_params.add_argument("doc_id", type=int, help="Pass the doc id to get a specific document's term frequency")
-    tf_params.add_argument("term", type=str, help="Returns the frequency of the passed term value")
-    tfidf_parser = subparsers.add_parser("tfidf", help="Find IDF from a term and a doc id")
+    tf_params.add_argument(
+        "doc_id",
+        type=int,
+        help="Pass the doc id to get a specific document's term frequency",
+    )
+    tf_params.add_argument(
+        "term", type=str, help="Returns the frequency of the passed term value"
+    )
+    tfidf_parser = subparsers.add_parser(
+        "tfidf", help="Find IDF from a term and a doc id"
+    )
     tfidf_params = tfidf_parser.add_argument_group("params")
-    tfidf_params.add_argument("doc_id", type=int, help="Pass the doc id to get a specific document's term IDF")
-    tfidf_params.add_argument("term", type=str, help="Returns the IDF of the passed term value")
+    tfidf_params.add_argument(
+        "doc_id", type=int, help="Pass the doc id to get a specific document's term IDF"
+    )
+    tfidf_params.add_argument(
+        "term", type=str, help="Returns the IDF of the passed term value"
+    )
 
     args = parser.parse_args()
     index = InvertedIndex()
@@ -52,7 +65,9 @@ def main() -> None:
             print(f"Getting term IDF of {args.term} by doc id {args.doc_id}")
             index.load()
             tf_idf = index.tfidf(args.doc_id, args.term)
-            print(f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}")
+            print(
+                f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}"
+            )
         case "idf":
             print(f"Getting term IDF of {args.term}")
             index.load()

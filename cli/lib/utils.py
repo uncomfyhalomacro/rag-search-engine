@@ -2,12 +2,14 @@ import string
 import json
 from nltk.stem import PorterStemmer
 
+
 def tokenize(input):
     punctable = str.maketrans("", "", string.punctuation)
     stemmer = PorterStemmer()
     tokens = input.split()
     tokens = [stemmer.stem(t.lower().translate(punctable)) for t in tokens]
     return tokens
+
 
 def get_stop_words():
     with open("data/stopwords.txt", "r") as f:

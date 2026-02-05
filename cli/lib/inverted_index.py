@@ -4,6 +4,7 @@ from lib.utils import tokenize
 from collections import Counter
 import math
 
+
 class InvertedIndex:
     def __init__(self):
         # token -> set(). a token mapped to a set of doc ids
@@ -31,7 +32,7 @@ class InvertedIndex:
         token = tokens[0]
         doc_ids = self.index.get(token)
         len_doc_ids = len(doc_ids) if doc_ids is not None else 0
-        return math.log((len(self.docmap) + 1)/ (len_doc_ids + 1))
+        return math.log((len(self.docmap) + 1) / (len_doc_ids + 1))
 
     def __add_document(self, doc_id, text):
         tokens = tokenize(text)
@@ -68,8 +69,8 @@ class InvertedIndex:
 
     def build(self, movies=[]):
         for movie in movies:
-            title=movie["title"]
-            description=movie["description"]
+            title = movie["title"]
+            description = movie["description"]
             doc_id = movie["id"]
             title_and_description = f"{title} {description}"
             self.__add_document(doc_id, title_and_description)
@@ -101,7 +102,6 @@ class InvertedIndex:
 
         with open(self.DOCMAP_PATH, "rb") as docmap_pkl:
             self.docmap = pickle.load(docmap_pkl)
-        
+
         with open(self.TF_PATH, "rb") as term_frequencies_pkl:
             self.term_frequencies = pickle.load(term_frequencies_pkl)
-
