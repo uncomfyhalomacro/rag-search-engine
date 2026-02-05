@@ -16,6 +16,11 @@ class InvertedIndex:
         self.DOCMAP_PATH = f"{self.CACHE_DIR}/docmap.pkl"
         self.TF_PATH = f"{self.CACHE_DIR}/term_frequencies.pkl"
 
+    def tfidf(self, doc_id, term):
+        tf = self.get_tf(doc_id, term)
+        idf = self.idf(term)
+        return tf * idf
+
     def idf(self, term):
         words = term.split()
         if len(words) > 1:
