@@ -51,10 +51,11 @@ class InvertedIndex:
             raise Exception("only one token is expected for this term")
         token = tokens[0]
         doc_object = self.term_frequencies.get(doc_id)
-        if doc_object:
+        if doc_object is not None:
             tf = doc_object.get(token)
-            return tf
-        return None
+            if tf is not None:
+                return tf
+        return 0
 
     def get_documents(self, term, limit=5) -> list[int]:
         try:
