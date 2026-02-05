@@ -17,12 +17,12 @@ class InvertedIndex:
         self.DOCMAP_PATH = f"{self.CACHE_DIR}/docmap.pkl"
         self.TF_PATH = f"{self.CACHE_DIR}/term_frequencies.pkl"
 
-    def tfidf(self, doc_id, term):
+    def tfidf(self, doc_id, term) -> float:
         tf = self.get_tf(doc_id, term)
         idf = self.idf(term)
         return tf * idf
 
-    def idf(self, term):
+    def idf(self, term) -> float:
         words = term.split()
         if len(words) > 1:
             raise Exception("only one token is expected for this term")
@@ -42,7 +42,7 @@ class InvertedIndex:
             self.index[token].add(doc_id)
         self.term_frequencies[doc_id] = Counter(tokens)
 
-    def get_tf(self, doc_id, term):
+    def get_tf(self, doc_id, term) -> int|float:
         words = term.split()
         if len(words) > 1:
             raise Exception("only one token is expected for this term")
