@@ -1,8 +1,8 @@
 import pickle
 import os
-from lib.utils import tokenize_text
+from lib.keyword_search.utils import tokenize_text
+from lib.keyword_search.constants import BM25_K1, BM25_B
 from collections import Counter
-from lib.constants import BM25_K1, BM25_B
 import math
 
 

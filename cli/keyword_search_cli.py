@@ -3,8 +3,8 @@
 from pprint import pprint
 import argparse
 import json
-from lib.inverted_index import InvertedIndex
-from lib.constants import BM25_K1, BM25_B
+from lib.keyword_search.inverted_index import InvertedIndex
+from lib.keyword_search.constants import BM25_K1, BM25_B
 
 
 def main() -> None:
