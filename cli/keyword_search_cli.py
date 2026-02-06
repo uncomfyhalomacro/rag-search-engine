@@ -4,7 +4,7 @@ from pprint import pprint
 import argparse
 import json
 from lib.inverted_index import InvertedIndex
-from lib.constants import BM25_K1
+from lib.constants import BM25_K1, BM25_B
 
 
 def main() -> None:
@@ -52,6 +52,9 @@ def main() -> None:
     bm25_tf_parser.add_argument("term", type=str, help="Term to get BM25 TF score for")
     bm25_tf_parser.add_argument(
         "k1", type=float, nargs="?", default=BM25_K1, help="Tunable BM25 K1 parameter"
+    )
+    bm25_tf_parser.add_argument(
+        "b", type=float, nargs="?", default=BM25_B, help="Tunable BM25 b parameter"
     )
 
     args = parser.parse_args()
@@ -101,7 +104,7 @@ def main() -> None:
                 f"Getting term bm25 adjusted frequency of {args.term} by doc id {args.doc_id}"
             )
             index.load()
-            bm25tf = index.get_bm25_tf(args.doc_id, args.term)
+            bm25tf = index.get_bm25_tf(args.doc_id, args.term, args.k1, args.b)
             print(
                 f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25tf:.2f}"
             )
