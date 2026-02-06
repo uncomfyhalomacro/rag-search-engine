@@ -2,6 +2,7 @@ import pickle
 import os
 from lib.utils import tokenize
 from collections import Counter
+from lib.constants import BM25_K1
 import math
 
 
@@ -21,6 +22,27 @@ class InvertedIndex:
         tf = self.get_tf(doc_id, term)
         idf = self.idf(term)
         return tf * idf
+
+    def get_bm25_tf(self, doc_id, term, k1=BM25_K1):
+        tf = self.get_tf(doc_id, term)
+        sat_value = tf * (k1 + 1) / (tf + k1)
+        return sat_value
+
+    def get_bm25_idf(self, term: str) -> float:
+        words = term.split()
+        if len(words) > 1:
+            raise Exception("only one token is expected for this term")
+        tokens = tokenize(term)
+        if len(tokens) > 1:
+            raise Exception("only one token is expected for this term")
+        token = tokens[0]
+        total_documents = len(self.docmap.keys())
+        doc_ids = self.index.get(token)
+        df = len(doc_ids if doc_ids is not None else set())
+        idf = math.log((total_documents - df + 0.5) / (df + 0.5) + 1)
+        return idf
+
+        return 0.0
 
     def idf(self, term) -> float:
         words = term.split()
@@ -42,7 +64,7 @@ class InvertedIndex:
             self.index[token].add(doc_id)
         self.term_frequencies[doc_id] = Counter(tokens)
 
-    def get_tf(self, doc_id, term) -> int|float:
+    def get_tf(self, doc_id, term) -> int | float:
         words = term.split()
         if len(words) > 1:
             raise Exception("only one token is expected for this term")

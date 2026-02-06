@@ -4,6 +4,7 @@ from pprint import pprint
 import argparse
 import json
 from lib.inverted_index import InvertedIndex
+from lib.constants import BM25_K1
 
 
 def main() -> None:
@@ -36,6 +37,21 @@ def main() -> None:
     )
     tfidf_params.add_argument(
         "term", type=str, help="Returns the IDF of the passed term value"
+    )
+
+    bm25_idf_parser = subparsers.add_parser(
+        "bm25idf", help="Get BM25 IDF score for a given term"
+    )
+    bm25_idf_parser.add_argument(
+        "term", type=str, help="Term to get BM25 IDF score for"
+    )
+    bm25_tf_parser = subparsers.add_parser(
+        "bm25tf", help="Get BM25 TF score for a given document ID and term"
+    )
+    bm25_tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    bm25_tf_parser.add_argument("term", type=str, help="Term to get BM25 TF score for")
+    bm25_tf_parser.add_argument(
+        "k1", type=float, nargs="?", default=BM25_K1, help="Tunable BM25 K1 parameter"
     )
 
     args = parser.parse_args()
@@ -73,6 +89,22 @@ def main() -> None:
             index.load()
             idf = index.idf(term=args.term)
             print(f"Inverse document frequency of '{args.term}': {idf:.2f}")
+
+        case "bm25idf":
+            print(f"Getting term bm25 IDF of {args.term}")
+            index.load()
+            bm25idf = index.get_bm25_idf(args.term)
+            print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
+
+        case "bm25tf":
+            print(
+                f"Getting term bm25 adjusted frequency of {args.term} by doc id {args.doc_id}"
+            )
+            index.load()
+            bm25tf = index.get_bm25_tf(args.doc_id, args.term)
+            print(
+                f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25tf:.2f}"
+            )
 
         case _:
             parser.print_help()
