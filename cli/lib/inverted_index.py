@@ -1,6 +1,6 @@
 import pickle
 import os
-from lib.utils import tokenize
+from lib.utils import tokenize_text
 from collections import Counter
 from lib.constants import BM25_K1, BM25_B
 import math
@@ -25,33 +25,55 @@ class InvertedIndex:
         idf = self.idf(term)
         return tf * idf
 
+    def bm25_search(self, query, limit):
+        tokens = tokenize_text(query)
+        print(tokens)
+        scores = dict()
+        for token in tokens:
+            doc_ids = self.index.get(token, set())
+            for doc_id in doc_ids:
+                if scores.get(doc_id) is None:
+                    scores[doc_id] = 0
+                bm25_score = self.bm25(doc_id, token)
+                scores[doc_id] += bm25_score
+
+        sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        if limit < len(sorted_scores):
+            return sorted_scores[:limit]
+        return sorted_scores
+
+    def bm25(self, doc_id, term):
+        bm25_tf = self.get_bm25_tf(doc_id, term)
+        bm25_idf = self.get_bm25_idf(term)
+        return bm25_tf * bm25_idf
+
     def get_bm25_tf(self, doc_id, term, k1=BM25_K1, b=BM25_B):
-        length_norm = 1 - b + b * (self.doc_lengths[doc_id] / self.__get_avg_doc_length())
+        avg_len = self.__get_avg_doc_length()
+        if avg_len == 0:
+            return 0.0  # or just tf, but 0.0 is fine if no docs
+        length_norm = 1 - b + b * (self.doc_lengths[doc_id] / avg_len)
         tf = self.get_tf(doc_id, term)
-        sat_value = (tf * (k1 + 1)) / (tf + k1 *length_norm)
+        sat_value = (tf * (k1 + 1)) / (tf + k1 * length_norm)
         return sat_value
 
     def get_bm25_idf(self, term: str) -> float:
         words = term.split()
         if len(words) > 1:
             raise Exception("only one token is expected for this term")
-        tokens = tokenize(term)
+        tokens = tokenize_text(term)
         if len(tokens) > 1:
             raise Exception("only one token is expected for this term")
         token = tokens[0]
         total_documents = len(self.docmap.keys())
-        doc_ids = self.index.get(token)
-        df = len(doc_ids if doc_ids is not None else set())
-        idf = math.log((total_documents - df + 0.5) / (df + 0.5) + 1)
-        return idf
-
-        return 0.0
+        doc_ids = self.index.get(token, set())
+        df = len(doc_ids)
+        return math.log((total_documents - df + 0.5) / (df + 0.5) + 1)
 
     def idf(self, term) -> float:
         words = term.split()
         if len(words) > 1:
             raise Exception("only one token is expected for this term")
-        tokens = tokenize(term)
+        tokens = tokenize_text(term)
         if len(tokens) > 1:
             raise Exception("only one token is expected for this term")
         token = tokens[0]
@@ -60,7 +82,7 @@ class InvertedIndex:
         return math.log((len(self.docmap) + 1) / (len_doc_ids + 1))
 
     def __add_document(self, doc_id, text):
-        tokens = tokenize(text)
+        tokens = tokenize_text(text)
         for token in tokens:
             if token not in self.index:
                 self.index[token] = set()
@@ -69,20 +91,17 @@ class InvertedIndex:
         self.doc_lengths[doc_id] = Counter(tokens).total()
 
     def __get_avg_doc_length(self) -> float:
-        number_of_docs = len(self.doc_lengths.keys())
-        if number_of_docs == 0:
+        num_docs = len(self.doc_lengths)
+        if num_docs == 0:
             return 0.0
-        total_freqs = sum(self.doc_lengths.values())
-
-        return total_freqs / number_of_docs
-        
-
+        total_len = sum(self.doc_lengths.values())
+        return total_len / num_docs
 
     def get_tf(self, doc_id, term) -> int | float:
         words = term.split()
         if len(words) > 1:
             raise Exception("only one token is expected for this term")
-        tokens = tokenize(term)
+        tokens = tokenize_text(term)
         if len(tokens) > 1:
             raise Exception("only one token is expected for this term")
         token = tokens[0]
@@ -145,8 +164,8 @@ class InvertedIndex:
         with open(self.DOCMAP_PATH, "rb") as docmap_pkl:
             self.docmap = pickle.load(docmap_pkl)
 
-
         with open(self.TF_PATH, "rb") as term_frequencies_pkl:
             self.term_frequencies = pickle.load(term_frequencies_pkl)
+
         with open(self.DOC_LENGTHS_PATH, "rb") as doc_lengths_pkl:
-            self.doc_lengths= pickle.load(doc_lengths_pkl)
+            self.doc_lengths = pickle.load(doc_lengths_pkl)

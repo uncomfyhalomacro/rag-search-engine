@@ -3,12 +3,15 @@ import json
 from nltk.stem import PorterStemmer
 
 
-def tokenize(input):
+def tokenize_text(input):
     punctable = str.maketrans("", "", string.punctuation)
     stemmer = PorterStemmer()
-    tokens = input.split()
-    tokens = [stemmer.stem(t.lower().translate(punctable)) for t in tokens]
-    return tokens
+    text = input.lower()
+    text = text.translate(punctable)
+    tokens = text.split()
+    tokens = remove_stop_words(tokens)
+    stemmed = [stemmer.stem(t) for t in tokens]
+    return stemmed
 
 
 def get_stop_words():
@@ -17,14 +20,10 @@ def get_stop_words():
         return text.splitlines()
 
 
-def remove_stop_words(l: list[str]):
+def remove_stop_words(tokens: list[str]):
     stopwords = get_stop_words()
-    for stopword in stopwords:
-        try:
-            l.remove(stopword)
-        except Exception:
-            continue
-    return l
+    filtered = [t for t in tokens if t and t not in stopwords]
+    return filtered
 
 
 def keyword_search(s: str):
