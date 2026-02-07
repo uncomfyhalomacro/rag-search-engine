@@ -1,9 +1,7 @@
-from transformers.models.lighton_ocr import LightOnOcrProcessor
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import os
 import json
-
 
 def cosine_similarity(vec1, vec2):
     dot_product = np.dot(vec1, vec2)

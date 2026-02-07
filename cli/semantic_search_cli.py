@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from torch.cuda import init
 
 import argparse
 import json
@@ -7,6 +8,7 @@ from lib.semantic_search import (
     embed_text,
     verify_embeddings,
     embed_query_text,
+    CHUNK_SIZE
 )
 
 
@@ -14,6 +16,10 @@ def main():
     parser = argparse.ArgumentParser(description="Semantic Search CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     subparsers.add_parser("verify", help="Verify currently used model")
+    chunk_parser = subparsers.add_parser("chunk", help="Split text in chunks")
+    chunk_parser.add_argument("--chunk-size", type=int, default=CHUNK_SIZE, help="Customise the chunk size")
+    chunk_parser.add_argument("--overlap", type=int, default=0, help="Customise the overlap size")
+    chunk_parser.add_argument("text", help="Text to chunks")
     subparsers.add_parser("verify_embeddings", help="Verify currently used model")
     embed_query_parser = subparsers.add_parser("embedquery", help="Embed query text")
     embed_query_parser.add_argument("query", help="Query text to generate embedding")
@@ -30,7 +36,6 @@ def main():
 
     args = parser.parse_args()
 
-    semantic_search = SemanticSearch()
 
     match args.command:
         case "verify":
@@ -43,6 +48,7 @@ def main():
         case "embedquery":
             embed_query_text(args.query)
         case "search":
+            semantic_search = SemanticSearch()
             with open("data/movies.json", "r") as f:
                 j = json.load(f)
                 movies = j["movies"]
@@ -54,6 +60,26 @@ def main():
                 id = document["id"]
                 print(f"{id}. {title} (score: {score})")
                 print(f"{description}")
+        case "chunk":
+            print(f"Chunking {len(args.text)} characters with chunk size: {args.chunk_size}")
+            chunks_storer = []
+            initial_chunks = args.text.split(None, maxsplit=args.chunk_size)
+            while len(initial_chunks) > 0:
+                if len(initial_chunks) == 1:
+                    chunks_storer[-1] += " " + initial_chunks.pop()
+                else:
+                    chunk = " ".join(initial_chunks[:-1])
+                    chunks_storer.append(chunk)
+                    initial_chunks = initial_chunks[-1].split(None, maxsplit=args.chunk_size)
+                    if args.overlap > 0:
+                        if len(initial_chunks) > args.overlap:
+                            overlap = chunk.rsplit(None, maxsplit=args.overlap)[1:]
+                            overlap.extend(initial_chunks)
+                            initial_chunks = overlap
+
+          
+            for idx, chunk in enumerate(chunks_storer, 1):
+                print(f"{idx}. {chunk}")
         case _:
             parser.print_help()
 
