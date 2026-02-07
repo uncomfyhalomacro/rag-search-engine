@@ -14,5 +14,5 @@ __all__ = [
     "verify_embeddings",
     "embed_query_text",
     "cosine_similarity",
-    "CHUNK_SIZE"
+    "CHUNK_SIZE",
 ]
