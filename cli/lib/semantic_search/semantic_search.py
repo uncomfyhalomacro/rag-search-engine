@@ -44,8 +44,8 @@ def embed_text(text):
 
 
 class SemanticSearch:
-    def __init__(self):
-        self.model = SentenceTransformer("all-MiniLM-L6-v2")
+    def __init__(self, model="all-MiniLM-L6-v2"):
+        self.model = SentenceTransformer(model)
         self.embeddings = []
         self.documents = []
         self.document_map = dict()

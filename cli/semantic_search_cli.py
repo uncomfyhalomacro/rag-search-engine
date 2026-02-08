@@ -1,64 +1,18 @@
 #!/usr/bin/env python3
-from mpmath.libmp.libmpi import MAX
-from torch.cuda import init
-import re
 
 import argparse
 import json
+from lib.utils import ordinary_chunker, semantic_chunker
 from lib.semantic_search import (
     SemanticSearch,
     embed_text,
     verify_embeddings,
     embed_query_text,
     CHUNK_SIZE,
-    MAX_SEM_CHUNK_SIZE
+    MAX_SEM_CHUNK_SIZE,
 )
 
-def ordinary_chunker(text, size=CHUNK_SIZE, overlap=0):
-    chunks_storer = []
-    initial_chunks = text.split(None, maxsplit=size)
-    while len(initial_chunks) > 0:
-        if len(initial_chunks) == 1:
-            chunks_storer[-1] += " " + initial_chunks.pop()
-        else:
-            chunk = " ".join(initial_chunks[:-1])
-            chunks_storer.append(chunk)
-            initial_chunks = initial_chunks[-1].split(
-                None, maxsplit=size
-            )
-            if overlap > 0:
-                if len(initial_chunks) > overlap:
-                    overlap = chunk.rsplit(None, maxsplit=overlap)[1:]
-                    overlap.extend(initial_chunks)
-                    initial_chunks = overlap
-
-    return chunks_storer
-
-def semantic_chunker(text, size=MAX_SEM_CHUNK_SIZE, overlap=0):
-    splits = re.split(r"(?<=[.!?])\s+", text)
-    chunks_storer = []
-    start = 0
-    for i in range(len(splits)):
-        if start + size <= len(splits):
-            if overlap > 0 and start+size+overlap <= len(splits):
-                chunk = splits[start:start+size+overlap-1]
-                chunks_storer.append(" ".join(chunk))
-            else:
-                chunk = splits[start:start+size]
-                chunks_storer.append(" ".join(chunk))
-            start += size - overlap
-        else:
-            chunk = []
-            if overlap > 0:
-                chunk = splits[start:-overlap]
-            else:
-                chunk = splits[start:]
-            if len(chunk) > 0:
-                chunks_storer.append(" ".join(chunk))
-            break
-
-
-    return chunks_storer
+from lib.semantic_search.chunked_semantic_search import ChunkedSemanticSearch
 
 
 def main():
@@ -73,9 +27,14 @@ def main():
         "--overlap", type=int, default=0, help="Customise the overlap size"
     )
     chunk_parser.add_argument("text", help="Text to chunks")
-    semantic_chunk_parser = subparsers.add_parser("semantic_chunk", help="Split text in semantic chunks")
+    semantic_chunk_parser = subparsers.add_parser(
+        "semantic_chunk", help="Split text in semantic chunks"
+    )
     semantic_chunk_parser.add_argument(
-        "--max-chunk-size", type=int, default=MAX_SEM_CHUNK_SIZE, help="Customise the max semantic chunk size"
+        "--max-chunk-size",
+        type=int,
+        default=MAX_SEM_CHUNK_SIZE,
+        help="Customise the max semantic chunk size",
     )
     semantic_chunk_parser.add_argument(
         "--overlap", type=int, default=0, help="Customise the overlap size"
@@ -86,6 +45,9 @@ def main():
     embed_query_parser.add_argument("query", help="Query text to generate embedding")
     embed_parser = subparsers.add_parser("embed_text", help="Generate embedded text")
     embed_parser.add_argument("text", help="Text to use for embed generation")
+    _embed_chunks_parser = subparsers.add_parser(
+        "embed_chunks", help="Generate embedded semantic chunked text"
+    )
     search_parser = subparsers.add_parser("search", help="Semantic search a query")
     search_parser.add_argument("query", type=str, nargs="?", help="The query to search")
     search_parser.add_argument(
@@ -133,7 +95,17 @@ def main():
             )
             chunks = semantic_chunker(args.text, args.max_chunk_size, args.overlap)
             for idx, chunk in enumerate(chunks, 1):
+                chunk = " ".join(chunk[1])
                 print(f"{idx}. {chunk}")
+        case "embed_chunks":
+            chunked_semantic_search = ChunkedSemanticSearch()
+            with open("data/movies.json", "r") as f:
+                j = json.load(f)
+                movies = j["movies"]
+                chunked_semantic_search.load_or_create_chunk_embeddings(movies)
+            embeddings = chunked_semantic_search.chunk_embeddings
+            embeddings = embeddings if embeddings is not None else []
+            print(f"Generated {len(embeddings)} chunked embeddings")
         case _:
             parser.print_help()
 
