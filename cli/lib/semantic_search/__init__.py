@@ -6,7 +6,7 @@ from lib.semantic_search.semantic_search import (
     cosine_similarity,
 )
 
-from lib.semantic_search.constants import CHUNK_SIZE
+from lib.semantic_search.constants import CHUNK_SIZE, MAX_SEM_CHUNK_SIZE
 
 __all__ = [
     "SemanticSearch",
@@ -15,4 +15,5 @@ __all__ = [
     "embed_query_text",
     "cosine_similarity",
     "CHUNK_SIZE",
+    "MAX_SEM_CHUNK_SIZE"
 ]
