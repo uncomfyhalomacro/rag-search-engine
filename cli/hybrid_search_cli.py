@@ -7,12 +7,23 @@ from lib.hybrid_search import HYBRID_ALPHA, HYBRID_SEARCH_LIMIT, HybridSearch
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    normalize_parser = subparsers.add_parser("normalize", help="Normalize a list of scores")
+    normalize_parser = subparsers.add_parser(
+        "normalize", help="Normalize a list of scores"
+    )
     normalize_parser.add_argument("scores", type=float, nargs="+", help="Score params")
-    weighted_search_parser = subparsers.add_parser("weighted-search", help="Weighted search")
+    weighted_search_parser = subparsers.add_parser(
+        "weighted-search", help="Weighted search"
+    )
     weighted_search_parser.add_argument("query", type=str, help="Query to search")
-    weighted_search_parser.add_argument("--alpha", type=float, default=HYBRID_ALPHA, help="Adjustable alpha value")
-    weighted_search_parser.add_argument("--limit", type=int, default=HYBRID_SEARCH_LIMIT, help="Adjustable search limit value")
+    weighted_search_parser.add_argument(
+        "--alpha", type=float, default=HYBRID_ALPHA, help="Adjustable alpha value"
+    )
+    weighted_search_parser.add_argument(
+        "--limit",
+        type=int,
+        default=HYBRID_SEARCH_LIMIT,
+        help="Adjustable search limit value",
+    )
 
     args = parser.parse_args()
 
@@ -27,7 +38,9 @@ def main() -> None:
                 j = json.load(f)
                 movies = j["movies"]
                 hs = HybridSearch(movies)
-                results = hs.weighted_search(query=args.query, alpha=args.alpha, limit=args.limit)
+                results = hs.weighted_search(
+                    query=args.query, alpha=args.alpha, limit=args.limit
+                )
                 for i, result in enumerate(results, 1):
                     title = result[1]["title"]
                     hybrid_score = result[1]["hybrid_score"]

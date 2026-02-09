@@ -6,6 +6,7 @@ from lib.hybrid_search import HYBRID_ALPHA
 def hybrid_score(bm25_score, semantic_score, alpha=HYBRID_ALPHA):
     return alpha * bm25_score + (1 - alpha) * semantic_score
 
+
 def normalise_scores(scores):
     s0 = min(scores)
     s1 = max(scores)
