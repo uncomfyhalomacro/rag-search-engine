@@ -27,7 +27,6 @@ class InvertedIndex:
 
     def bm25_search(self, query, limit):
         tokens = tokenize_text(query)
-        print(tokens)
         scores = dict()
         for token in tokens:
             doc_ids = self.index.get(token, set())

@@ -1,5 +1,22 @@
 import re
 from lib.semantic_search import CHUNK_SIZE, MAX_SEM_CHUNK_SIZE
+from lib.hybrid_search import HYBRID_ALPHA
+
+
+def hybrid_score(bm25_score, semantic_score, alpha=HYBRID_ALPHA):
+    return alpha * bm25_score + (1 - alpha) * semantic_score
+
+def normalise_scores(scores):
+    s0 = min(scores)
+    s1 = max(scores)
+    if s1 == s0:
+        return [1.0 for _ in range(len(scores))]
+    res = []
+    for score in scores:
+        r = (score - s0) / (s1 - s0)
+        res.append(r)
+
+    return res
 
 
 def ordinary_chunker(text, size=CHUNK_SIZE, overlap=0):
