@@ -22,16 +22,28 @@ def ordinary_chunker(text, size=CHUNK_SIZE, overlap=0):
 
 
 def semantic_chunker(text, size=MAX_SEM_CHUNK_SIZE, overlap=0):
+    text = text.strip()
+    if text == "":
+        return []
+
     splits = re.split(r"(?<=[.!?])\s+", text)
+    if len(splits) == 0:
+        if text.strip() not in [".", "!", "?"]:
+            return [text]
+
     chunks_storer = []
     start = 0
     for i in range(len(splits)):
         if start + size <= len(splits):
             if overlap > 0 and start + size + overlap <= len(splits):
                 chunk = splits[start : start + size + overlap - 1]
+                chunk[0] = chunk[0].lstrip()
+                chunk[-1] = chunk[-1].rstrip()
                 chunks_storer.append((start, chunk))
             else:
                 chunk = splits[start : start + size]
+                chunk[0] = chunk[0].lstrip()
+                chunk[-1] = chunk[-1].rstrip()
                 chunks_storer.append((start, chunk))
             start += size - overlap
         else:
@@ -41,6 +53,8 @@ def semantic_chunker(text, size=MAX_SEM_CHUNK_SIZE, overlap=0):
             else:
                 chunk = splits[start:]
             if len(chunk) > 0:
+                chunk[0] = chunk[0].lstrip()
+                chunk[-1] = chunk[-1].rstrip()
                 chunks_storer.append((start, chunk))
             break
     return chunks_storer

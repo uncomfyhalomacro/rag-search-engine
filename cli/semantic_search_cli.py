@@ -57,6 +57,18 @@ def main():
         help="Limit the number of search results shown in descending order",
     )
 
+    search_chunked_parser = subparsers.add_parser(
+        "search_chunked", help="Chunked semantic search a query"
+    )
+    search_chunked_parser.add_argument(
+        "query", type=str, nargs="?", help="The query to search"
+    )
+    search_chunked_parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Limit the number of search results shown in descending order",
+    )
     args = parser.parse_args()
 
     match args.command:
@@ -98,14 +110,28 @@ def main():
                 chunk = " ".join(chunk[1])
                 print(f"{idx}. {chunk}")
         case "embed_chunks":
-            chunked_semantic_search = ChunkedSemanticSearch()
+            cc_search = ChunkedSemanticSearch()
             with open("data/movies.json", "r") as f:
                 j = json.load(f)
                 movies = j["movies"]
-                chunked_semantic_search.load_or_create_chunk_embeddings(movies)
-            embeddings = chunked_semantic_search.chunk_embeddings
+                cc_search.load_or_create_chunk_embeddings(movies)
+            embeddings = cc_search.chunk_embeddings
             embeddings = embeddings if embeddings is not None else []
             print(f"Generated {len(embeddings)} chunked embeddings")
+        case "search_chunked":
+            cc_search = ChunkedSemanticSearch()
+            with open("data/movies.json", "r") as f:
+                j = json.load(f)
+                movies = j["movies"]
+                cc_search.load_or_create_chunk_embeddings(movies)
+                results = cc_search.search_chunks(args.query, args.limit)
+                for i, result in enumerate(results, 1):
+                    TITLE = result["title"]
+                    SCORE = result["score"]
+                    DESCRIPTION = result["description"]
+                    print(f"\n{i}. {TITLE} (score: {SCORE:.4f})")
+                    print(f"   {DESCRIPTION}...")
+
         case _:
             parser.print_help()
 
