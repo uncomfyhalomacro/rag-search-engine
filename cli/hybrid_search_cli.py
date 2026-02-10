@@ -1,7 +1,10 @@
 import argparse
+import os
 import json
 from lib.utils import normalise_scores
 from lib.hybrid_search import HYBRID_ALPHA, HYBRID_SEARCH_LIMIT, HybridSearch
+from dotenv import load_dotenv
+from google import genai
 
 
 def main() -> None:
@@ -28,6 +31,9 @@ def main() -> None:
     rrf_search_parser.add_argument("query", type=str, help="Query to search")
     rrf_search_parser.add_argument(
         "-k", "--k-value", type=int, default=60, help="K value"
+    )
+    rrf_search_parser.add_argument(
+        "--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method"
     )
     rrf_search_parser.add_argument(
         "--limit",
@@ -64,12 +70,78 @@ def main() -> None:
                     print(f"\t {description}")
 
         case "rrf-search":
+            query = args.query
+            if args.enhance == "spell":
+                load_dotenv()
+                api_key = os.environ.get("GEMINI_API_KEY")
+                client = genai.Client(api_key=api_key)
+                system_prompt = f"""Fix any spelling errors in this movie search query.
+
+    Only correct obvious typos. Don't change correctly spelled words.
+
+    Query: "{args.query}"
+
+    If no errors, return the original query. Otherwise, return the correction but all should be lowercase."""
+                response = client.models.generate_content(
+                	model="gemini-2.5-flash",
+                	contents=system_prompt
+                )
+                query = response.text
+                print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{response.text}'\n")
+            if args.enhance == "rewrite":
+                load_dotenv()
+                api_key = os.environ.get("GEMINI_API_KEY")
+                client = genai.Client(api_key=api_key)
+                system_prompt = f"""Rewrite this movie search query to be more specific and searchable.
+
+Original: "{query}"
+
+Consider:
+- Common movie knowledge (famous actors, popular films)
+- Genre conventions (horror = scary, animation = cartoon)
+- Keep it concise (under 10 words)
+- It should be a google style search query that's very specific
+- Don't use boolean logic
+
+Examples:
+
+- "that bear movie where leo gets attacked" -> "The Revenant Leonardo DiCaprio bear attack"
+- "movie about bear in london with marmalade" -> "Paddington London marmalade"
+- "scary movie with bear from few years ago" -> "bear horror movie 2015-2020"
+
+Return the rewritten query, all in lowercase"""
+            if args.enhance == "expand":
+                load_dotenv()
+                api_key = os.environ.get("GEMINI_API_KEY")
+                client = genai.Client(api_key=api_key)
+                system_prompt = f"""Expand this movie search query with related terms.
+
+Add synonyms and related concepts that might appear in movie descriptions.
+Keep expansions relevant and focused.
+This will be appended to the original query.
+
+Examples:
+
+- "scary bear movie" -> "scary horror grizzly bear movie terrifying film"
+- "action movie with bear" -> "action thriller bear chase fight adventure"
+- "comedy with bear" -> "comedy funny bear humor lighthearted"
+
+Query: "{query}"
+
+Return the expanded query, all in lowercase
+"""
+                response = client.models.generate_content(
+                	model="gemini-2.5-flash",
+                	contents=system_prompt
+                )
+                query = response.text
+                print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{response.text}'\n")
             with open("data/movies.json", "r") as f:
                 j = json.load(f)
                 movies = j["movies"]
                 hs = HybridSearch(movies)
                 results = hs.rrf_search(
-                    query=args.query, k=args.k_value, limit=args.limit
+                    query=query, k=args.k_value, limit=args.limit
                 )
                 for i, result in enumerate(results, 1):
                     res = result[1]
