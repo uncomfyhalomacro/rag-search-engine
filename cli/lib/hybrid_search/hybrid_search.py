@@ -9,6 +9,9 @@ class HybridSearch:
     def __init__(self, documents):
         self.documents = documents
         self.doc_hybridized_scores = dict()
+        self.doc_bm25_rrf_ranks = dict()
+        self.doc_semantic_rrf_ranks = dict()
+        self.doc_overall_rrf = dict()
         self.semantic_search = chunked_ss.ChunkedSemanticSearch()
         self.semantic_search.load_or_create_chunk_embeddings(documents)
 
@@ -55,7 +58,46 @@ class HybridSearch:
             return res[:limit]
         return res
 
-        raise NotImplementedError("Weighted hybrid search is not implemented yet.")
-
     def rrf_search(self, query, k, limit=10):
-        raise NotImplementedError("RRF hybrid search is not implemented yet.")
+        bm25_scores = self._bm25_search(query, limit=limit * 500)
+        semantic_scores = self.semantic_search.search_chunks(query, limit=limit * 500)
+        bm25_scores = sorted(bm25_scores, key=lambda x: x[1], reverse=True)
+        semantic_scores = sorted(
+            semantic_scores, key=lambda x: x["score"], reverse=True
+        )
+        for rank, (doc_id, score) in enumerate(bm25_scores, 1):
+            rrf_score = utils.rrf_score(k=k, rank=rank)
+            document = self.idx.docmap[doc_id]
+            document["bm25_rrf_score"] = rrf_score
+            document["bm25_rrf_rank"] = rank
+            self.doc_bm25_rrf_ranks[doc_id] = document
+
+        for rank, document in enumerate(semantic_scores, 1):
+            rrf_score = utils.rrf_score(k=k, rank=rank)
+            document["semantic_rrf_score"] = rrf_score
+            document["semantic_rrf_rank"] = rank
+            doc_id = document["id"]
+            self.doc_semantic_rrf_ranks[doc_id] = document
+
+        for doc_id, document in self.doc_semantic_rrf_ranks.items():
+            doc_from_bm25 = self.doc_bm25_rrf_ranks.get(doc_id)
+            bm25_rrf_score = 0
+            document["bm25_rrf_rank"] = None
+            if doc_from_bm25 is not None:
+                bm25_rrf_score = doc_from_bm25["bm25_rrf_score"]
+                document["bm25_rrf_rank"] = doc_from_bm25["bm25_rrf_rank"]
+            semantic_rrf_score = document["semantic_rrf_score"]
+            overall_rrf = bm25_rrf_score + semantic_rrf_score
+            document["bm25_rrf_score"] = bm25_rrf_score
+            document["overall_rrf"] = overall_rrf
+            self.doc_overall_rrf[doc_id] = document
+
+        # Now return a tupled list?
+        overall_rrfs = sorted(
+            self.doc_overall_rrf.items(),
+            key=lambda x: x[1]["overall_rrf"],
+            reverse=True,
+        )
+        if limit <= len(overall_rrfs):
+            return overall_rrfs[:limit]
+        return overall_rrfs

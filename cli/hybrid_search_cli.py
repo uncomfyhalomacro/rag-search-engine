@@ -24,6 +24,17 @@ def main() -> None:
         default=HYBRID_SEARCH_LIMIT,
         help="Adjustable search limit value",
     )
+    rrf_search_parser = subparsers.add_parser("rrf-search", help="RRF search")
+    rrf_search_parser.add_argument("query", type=str, help="Query to search")
+    rrf_search_parser.add_argument(
+        "-k", "--k-value", type=int, default=60, help="K value"
+    )
+    rrf_search_parser.add_argument(
+        "--limit",
+        type=int,
+        default=HYBRID_SEARCH_LIMIT,
+        help="Adjustable search limit value",
+    )
 
     args = parser.parse_args()
 
@@ -50,6 +61,26 @@ def main() -> None:
                     print(f"{i}. {title}")
                     print(f"\t Hybrid Score: {hybrid_score}")
                     print(f"\t BM25 Score: {bm25_score}, Semantic: {semantic_score}")
+                    print(f"\t {description}")
+
+        case "rrf-search":
+            with open("data/movies.json", "r") as f:
+                j = json.load(f)
+                movies = j["movies"]
+                hs = HybridSearch(movies)
+                results = hs.rrf_search(
+                    query=args.query, k=args.k_value, limit=args.limit
+                )
+                for i, result in enumerate(results, 1):
+                    res = result[1]
+                    title = res["title"]
+                    bm25_rank = res["bm25_rrf_rank"]
+                    semantic_rank = res["semantic_rrf_rank"]
+                    rrf_score = res["overall_rrf"]
+                    description = result[1]["description"][:100]
+                    print(f"{i}. {title}")
+                    print(f"\t RRF Score: {rrf_score}")
+                    print(f"\t BM25 Rank: {bm25_rank}, Semantic Rank: {semantic_rank}")
                     print(f"\t {description}")
 
         case _:

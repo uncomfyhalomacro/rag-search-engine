@@ -3,6 +3,10 @@ from lib.semantic_search import CHUNK_SIZE, MAX_SEM_CHUNK_SIZE
 from lib.hybrid_search import HYBRID_ALPHA
 
 
+def rrf_score(rank, k=60):
+    return 1 / (k + rank)
+
+
 def hybrid_score(bm25_score, semantic_score, alpha=HYBRID_ALPHA):
     return alpha * bm25_score + (1 - alpha) * semantic_score
 
