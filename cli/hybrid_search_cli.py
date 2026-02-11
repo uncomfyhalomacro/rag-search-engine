@@ -1,5 +1,6 @@
 import argparse
 import os
+from sentence_transformers import CrossEncoder
 import json
 from lib.utils import normalise_scores
 from lib.hybrid_search import HYBRID_ALPHA, HYBRID_SEARCH_LIMIT, HybridSearch
@@ -33,7 +34,16 @@ def main() -> None:
         "-k", "--k-value", type=int, default=60, help="K value"
     )
     rrf_search_parser.add_argument(
-        "--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method"
+        "--enhance",
+        type=str,
+        choices=["spell", "rewrite", "expand"],
+        help="Query enhancement method",
+    )
+    rrf_search_parser.add_argument(
+        "--rerank-method",
+        type=str,
+        choices=["individual", "batch", "cross_encoder"],
+        help="Rerank method",
     )
     rrf_search_parser.add_argument(
         "--limit",
@@ -83,11 +93,12 @@ def main() -> None:
 
     If no errors, return the original query. Otherwise, return the correction but all should be lowercase."""
                 response = client.models.generate_content(
-                	model="gemini-2.5-flash",
-                	contents=system_prompt
+                    model="gemini-2.5-flash", contents=system_prompt
                 )
                 query = response.text
-                print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{response.text}'\n")
+                print(
+                    f"Enhanced query ({args.enhance}): '{args.query}' -> '{response.text}'\n"
+                )
             if args.enhance == "rewrite":
                 load_dotenv()
                 api_key = os.environ.get("GEMINI_API_KEY")
@@ -131,29 +142,95 @@ Query: "{query}"
 Return the expanded query, all in lowercase
 """
                 response = client.models.generate_content(
-                	model="gemini-2.5-flash",
-                	contents=system_prompt
+                    model="gemini-2.5-flash", contents=system_prompt
                 )
                 query = response.text
-                print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{response.text}'\n")
+                print(
+                    f"Enhanced query ({args.enhance}): '{args.query}' -> '{response.text}'\n"
+                )
             with open("data/movies.json", "r") as f:
                 j = json.load(f)
                 movies = j["movies"]
                 hs = HybridSearch(movies)
-                results = hs.rrf_search(
-                    query=query, k=args.k_value, limit=args.limit
-                )
+                results = hs.rrf_search(query=query, k=args.k_value, limit=args.limit)
+                output = ""
+                pairs = []
                 for i, result in enumerate(results, 1):
                     res = result[1]
                     title = res["title"]
                     bm25_rank = res["bm25_rrf_rank"]
                     semantic_rank = res["semantic_rrf_rank"]
                     rrf_score = res["overall_rrf"]
-                    description = result[1]["description"][:100]
-                    print(f"{i}. {title}")
-                    print(f"\t RRF Score: {rrf_score}")
-                    print(f"\t BM25 Rank: {bm25_rank}, Semantic Rank: {semantic_rank}")
-                    print(f"\t {description}")
+                    description = result[1]["description"]
+                    if args.rerank_method == "cross_encoder":
+                        pairs.append([query, f"{title} - {description}"])
+                    output += f"{i}. {title}\n"
+                    if args.rerank_method == "individual":
+
+                        load_dotenv()
+                        api_key = os.environ.get("GEMINI_API_KEY")
+                        client = genai.Client(api_key=api_key)
+                        system_prompt = f"""Rate how well this movie matches the search query.
+
+    Query: "{query}"
+    Movie: {title} - {description}
+
+    Consider:
+    - Direct relevance to query
+    - User intent (what they're looking for)
+    - Content appropriateness
+
+    Rate 0-10 (10 = perfect match).
+    Give me ONLY the rating in your response, no other text or explanation.
+    """
+                        response = client.models.generate_content(
+                            model="gemini-2.5-flash", contents=system_prompt
+                        )
+                        llm_score = response.text
+                        output += f"\t Rerank Score: {llm_score}/10\n"
+
+                    output += f"\t RRF Score: {rrf_score}\n"
+                    output += f"\t BM25 Rank: {bm25_rank}, Semantic Rank: {semantic_rank}\n"
+                    output += f"\t {description[:100]}\n"
+                if args.rerank_method == "batch":
+                    load_dotenv()
+                    api_key = os.environ.get("GEMINI_API_KEY")
+                    client = genai.Client(api_key=api_key)
+                    system_prompt=f"""Rank these movies with existing ranks and scoring by relevance to the search query.
+
+Query: "{query}"
+
+Movies with ranks and scoring:
+{output}
+
+Return a similar output but with a "Rerank Rank" below the title and sort it by "Rerank Rank". For example:
+
+1. This is a title
+	Rerank Rank: 3
+	RRF Score: 0.22
+	BM25 Rank: 2, Semantic Rank: 10
+	This is a description of the movie
+"""
+                
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash", contents=system_prompt
+                    )
+                    print(response.text)
+                elif args.rerank_method == "cross_encoder":
+                    cr = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+                    cr_scores = cr.predict(pairs)
+                    new_results = zip(cr_scores, results)
+                    new_results = sorted(new_results, key=lambda x: x[0], reverse=True)
+                    for idx, (cr_score, result) in enumerate(new_results, 1):
+                        print(f"{idx}. {result[1]['title']}")
+                        print(f"       Cross Encoder Score: {cr_score}")
+                        print(f"       RRF Score: {result[1]['overall_rrf']}")
+                        print(f"       BM25 Rank: {result[1]['bm25_rrf_rank']}, Semantic Rank: {result[1]['semantic_rrf_rank']}")
+                        print(f"       {result[1]['description']}")
+                        print()
+                else:
+                    print(output)
+
 
         case _:
             parser.print_help()

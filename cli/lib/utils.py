@@ -1,6 +1,22 @@
 import re
-from lib.semantic_search import CHUNK_SIZE, MAX_SEM_CHUNK_SIZE
-from lib.hybrid_search import HYBRID_ALPHA
+from lib.semantic_search.constants import CHUNK_SIZE, MAX_SEM_CHUNK_SIZE
+from lib.hybrid_search.constants import HYBRID_ALPHA
+import json
+
+MOVIES_DATASET_PATH = "data/movies.json"
+GOLDEN_DATASET_PATH = "data/golden_dataset.json"
+
+def load_movies():
+    with open(MOVIES_DATASET_PATH, "r") as f:
+        data = json.load(f)
+        return data
+    return None
+
+def load_golden_dataset():
+    with open(GOLDEN_DATASET_PATH, "r") as f:
+        data = json.load(f)
+        return data
+    return None
 
 
 def rrf_score(rank, k=60):
