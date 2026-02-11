@@ -6,11 +6,13 @@ import json
 MOVIES_DATASET_PATH = "data/movies.json"
 GOLDEN_DATASET_PATH = "data/golden_dataset.json"
 
+
 def load_movies():
     with open(MOVIES_DATASET_PATH, "r") as f:
         data = json.load(f)
         return data
     return None
+
 
 def load_golden_dataset():
     with open(GOLDEN_DATASET_PATH, "r") as f:

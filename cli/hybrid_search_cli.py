@@ -40,6 +40,9 @@ def main() -> None:
         help="Query enhancement method",
     )
     rrf_search_parser.add_argument(
+        "--evaluate", default=False, help="Evaluate search results", action="store_true"
+    )
+    rrf_search_parser.add_argument(
         "--rerank-method",
         type=str,
         choices=["individual", "batch", "cross_encoder"],
@@ -166,7 +169,6 @@ Return the expanded query, all in lowercase
                         pairs.append([query, f"{title} - {description}"])
                     output += f"{i}. {title}\n"
                     if args.rerank_method == "individual":
-
                         load_dotenv()
                         api_key = os.environ.get("GEMINI_API_KEY")
                         client = genai.Client(api_key=api_key)
@@ -190,13 +192,15 @@ Return the expanded query, all in lowercase
                         output += f"\t Rerank Score: {llm_score}/10\n"
 
                     output += f"\t RRF Score: {rrf_score}\n"
-                    output += f"\t BM25 Rank: {bm25_rank}, Semantic Rank: {semantic_rank}\n"
+                    output += (
+                        f"\t BM25 Rank: {bm25_rank}, Semantic Rank: {semantic_rank}\n"
+                    )
                     output += f"\t {description[:100]}\n"
                 if args.rerank_method == "batch":
                     load_dotenv()
                     api_key = os.environ.get("GEMINI_API_KEY")
                     client = genai.Client(api_key=api_key)
-                    system_prompt=f"""Rank these movies with existing ranks and scoring by relevance to the search query.
+                    system_prompt = f"""Rank these movies with existing ranks and scoring by relevance to the search query.
 
 Query: "{query}"
 
@@ -211,7 +215,7 @@ Return a similar output but with a "Rerank Rank" below the title and sort it by 
 	BM25 Rank: 2, Semantic Rank: 10
 	This is a description of the movie
 """
-                
+
                     response = client.models.generate_content(
                         model="gemini-2.5-flash", contents=system_prompt
                     )
@@ -225,12 +229,46 @@ Return a similar output but with a "Rerank Rank" below the title and sort it by 
                         print(f"{idx}. {result[1]['title']}")
                         print(f"       Cross Encoder Score: {cr_score}")
                         print(f"       RRF Score: {result[1]['overall_rrf']}")
-                        print(f"       BM25 Rank: {result[1]['bm25_rrf_rank']}, Semantic Rank: {result[1]['semantic_rrf_rank']}")
+                        print(
+                            f"       BM25 Rank: {result[1]['bm25_rrf_rank']}, Semantic Rank: {result[1]['semantic_rrf_rank']}"
+                        )
                         print(f"       {result[1]['description']}")
                         print()
                 else:
                     print(output)
 
+                if args.evaluate:
+                    load_dotenv()
+                    api_key = os.environ.get("GEMINI_API_KEY")
+                    client = genai.Client(api_key=api_key)
+                    system_prompt = f"""Rate how relevant each result is to this query on a 0-3 scale:
+
+Query: "{query}"
+
+Results:
+{output}
+
+Scale:
+- 3: Highly relevant
+- 2: Relevant
+- 1: Marginally relevant
+- 0: Not relevant
+
+Do NOT give any numbers out than 0, 1, 2, or 3.
+
+Return ONLY the scores in the same order you were given the documents. Return a valid JSON list, nothing else. For example:
+
+[2, 0, 3, 2, 0, 1]"""
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash", contents=system_prompt
+                    )
+                    scores = json.loads(
+                        response.text if response.text is not None else "[]"
+                    )
+                    for i, (score, result) in enumerate(zip(scores, results), 1):
+                        res = result[1]
+                        title = res["title"]
+                        print(f"{i}. {title}: {score}/3")
 
         case _:
             parser.print_help()

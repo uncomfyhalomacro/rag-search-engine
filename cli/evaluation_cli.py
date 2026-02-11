@@ -30,8 +30,16 @@ def main():
         titles = [document.get("title", "") for _, document in results]
         relevant_count = sum([titles.count(rd) for rd in relevant_docs])
         precision = relevant_count / len(titles)
+        recall = relevant_count / len(relevant_docs)
+        f1 = 0.0
+        try:
+            f1 = 2 * (precision * recall) / (precision + recall)
+        except ZeroDivisionError:
+            f1 = 0.0
         print(f"Query: {query}")
+        print(f"  - Recall@{limit}: {recall:0.4f}")
         print(f"  - Precision@{limit}: {precision:0.4f}")
+        print(f"  - F1 Score: {f1:0.4}")
         print(f"  - Retrieved: {', '.join(titles)}")
         print(f"  - Relevant: {', '.join(relevant_docs)}")
 
