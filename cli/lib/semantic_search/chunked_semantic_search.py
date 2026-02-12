@@ -61,7 +61,7 @@ class ChunkedSemanticSearch(SemanticSearch):
                 movie_idx = sub[0]
                 score = round(sub[1], 4)
                 document = self.documents[movie_idx]
-                document["description"] = document["description"][:100]
+                document["description"] = document["description"]
                 document["score"] = score
                 document["metadata"] = self.chunk_metadata["chunks"][movie_idx] or {}
                 items.append(document)
